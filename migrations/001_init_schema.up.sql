@@ -4,7 +4,7 @@ CREATE TABLE teams (
 
 CREATE TABLE users (
     id TEXT PRIMARY KEY,
-    username TEXT NOT NULL,
+    name TEXT NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     team_name TEXT NOT NULL REFERENCES teams(name) ON DELETE CASCADE
 );

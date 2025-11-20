@@ -19,7 +19,6 @@ func NewPullRequestRepository(db *pgxpool.Pool) *PullRequestRepository {
 	return &PullRequestRepository{db: db}
 }
 
-// CreatePR соответствует интерфейсу
 func (r *PullRequestRepository) CreatePR(ctx context.Context, pr *models.PullRequest) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -58,7 +57,6 @@ func (r *PullRequestRepository) CreatePR(ctx context.Context, pr *models.PullReq
 	return nil
 }
 
-// MergePR соответствует интерфейсу
 func (r *PullRequestRepository) MergePR(ctx context.Context, id string) error {
 	query := `
         UPDATE pull_requests 
@@ -94,7 +92,6 @@ func (r *PullRequestRepository) ReassignReviewer(ctx context.Context, prID, oldU
 	return nil
 }
 
-// GetByReviewerID возвращает []*models.PullRequestShort
 func (r *PullRequestRepository) GetByReviewerID(ctx context.Context, userID string) ([]*models.PullRequestShort, error) {
 	query := `
         SELECT pr.id, pr.name, pr.author_id, pr.status
@@ -109,7 +106,6 @@ func (r *PullRequestRepository) GetByReviewerID(ctx context.Context, userID stri
 	}
 	defer rows.Close()
 
-	// Используем CollectRows с возвратом указателя
 	result, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*models.PullRequestShort, error) {
 		var pr models.PullRequestShort
 		err := row.Scan(&pr.ID, &pr.Name, &pr.AuthorID, &pr.Status)
@@ -123,7 +119,6 @@ func (r *PullRequestRepository) GetByReviewerID(ctx context.Context, userID stri
 	return result, nil
 }
 
-// GetByID нужен для сервиса (хотя в интерфейсе выше его нет, но мы договорились его добавить)
 func (r *PullRequestRepository) GetByID(ctx context.Context, id string) (*models.PullRequest, error) {
 	query := `
         SELECT id, name, author_id, status, created_at, merged_at 

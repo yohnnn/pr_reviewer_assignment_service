@@ -2,8 +2,6 @@ package models
 
 import (
 	"errors"
-
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 var (
@@ -15,8 +13,3 @@ var (
 	ErrNoCandidates = errors.New("no candidates available")
 	ErrNotAssigned  = errors.New("reviewer is not assigned to this PR")
 )
-
-func isUnique(err error) bool {
-	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && pgErr.Code == "23505"
-}

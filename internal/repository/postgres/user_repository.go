@@ -23,10 +23,9 @@ func NewUserRepository(db *pgxpool.Pool) *UserRepository {
 func (r *UserRepository) GetUser(ctx context.Context, id string) (*models.User, error) {
 	query := `SELECT id, name, team_name, is_active FROM users WHERE id = $1`
 	var u models.User
-	err := r.db.QueryRow(ctx, query, id).Scan(&u.ID, &u.Name, &u.TeamName, &u.IsActive)
-	if err != nil {
+	if err := r.db.QueryRow(ctx, query, id).Scan(&u.ID, &u.Name, &u.TeamName, &u.IsActive); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("user not found: %w", err) // Можно возвращать models.ErrNotFound
+			return nil, fmt.Errorf("user not found: %w", models.ErrNotFound)
 		}
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
@@ -40,7 +39,7 @@ func (r *UserRepository) SetUserIsActive(ctx context.Context, id string, isActiv
 		return fmt.Errorf("failed to update user status: %w", err)
 	}
 	if res.RowsAffected() == 0 {
-		return pgx.ErrNoRows
+		return models.ErrNotFound
 	}
 	return nil
 }
@@ -69,19 +68,3 @@ func (r *UserRepository) GetActiveUsersByTeam(ctx context.Context, teamName stri
 
 	return users, nil
 }
-
-// func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) error {
-// 	query := `
-//         INSERT INTO users (id, name, team_name, is_active)
-//         VALUES ($1, $2, $3, $4)
-//         ON CONFLICT (id) DO UPDATE
-//         SET name = EXCLUDED.name,
-//             team_name = EXCLUDED.team_name,
-//             is_active = EXCLUDED.is_active
-//     	`
-// 	_, err := r.db.Exec(ctx, query, user.ID, user.Name, user.TeamName, user.IsActive)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
