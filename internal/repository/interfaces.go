@@ -6,20 +6,20 @@ import (
 	"github.com/yohnnn/pr_reviewer_assignment_service/internal/models"
 )
 
-type TeamRepository interface {
+type TeamRepositoryInterface interface {
 	CreateTeam(ctx context.Context, team *models.Team) error
 	GetTeam(ctx context.Context, name string) (*models.Team, error)
 }
 
-type UserRepository interface {
+type UserRepositoryInterface interface {
 	GetUser(ctx context.Context, id string) (*models.User, error)
-	SetUserIsActive(ctx context.Context, id string, isActive bool) error
+	SetUserIsActive(ctx context.Context, id string, isActive bool) (*models.User, error)
 	GetActiveUsersByTeam(ctx context.Context, teamName string) ([]models.User, error)
 }
 
-type PullRequestRepository interface {
+type PullRequestRepositoryInterface interface {
 	CreatePR(ctx context.Context, pr *models.PullRequest) error
-	MergePR(ctx context.Context, id string) error
+	MergePR(ctx context.Context, id string) (*models.PullRequest, error)
 	ReassignReviewer(ctx context.Context, id, oldUserID, newUserID string) error
 	GetByReviewerID(ctx context.Context, userID string) ([]*models.PullRequestShort, error)
 	GetByID(ctx context.Context, id string) (*models.PullRequest, error)

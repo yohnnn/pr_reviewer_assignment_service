@@ -57,20 +57,34 @@ func (r *PullRequestRepository) CreatePR(ctx context.Context, pr *models.PullReq
 	return nil
 }
 
-func (r *PullRequestRepository) MergePR(ctx context.Context, id string) error {
+func (r *PullRequestRepository) MergePR(ctx context.Context, id string) (*models.PullRequest, error) {
 	query := `
         UPDATE pull_requests 
         SET status = 'MERGED', merged_at = $2
         WHERE id = $1
+        RETURNING id, name, author_id, status, created_at, merged_at, reviewers
     `
-	res, err := r.db.Exec(ctx, query, id, time.Now())
+
+	var pr models.PullRequest
+
+	err := r.db.QueryRow(ctx, query, id, time.Now()).Scan(
+		&pr.ID,
+		&pr.Name,
+		&pr.AuthorID,
+		&pr.Status,
+		&pr.CreatedAt,
+		&pr.MergedAt,
+		&pr.Reviewers,
+	)
+
 	if err != nil {
-		return fmt.Errorf("failed to merge pr: %w", err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, models.ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to merge pr: %w", err)
 	}
-	if res.RowsAffected() == 0 {
-		return models.ErrNotFound
-	}
-	return nil
+
+	return &pr, nil
 }
 
 func (r *PullRequestRepository) ReassignReviewer(ctx context.Context, prID, oldUserID, newUserID string) error {

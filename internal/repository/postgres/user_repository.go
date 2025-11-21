@@ -32,16 +32,22 @@ func (r *UserRepository) GetUser(ctx context.Context, id string) (*models.User, 
 	return &u, nil
 }
 
-func (r *UserRepository) SetUserIsActive(ctx context.Context, id string, isActive bool) error {
-	query := `UPDATE users SET is_active = $1 WHERE id = $2`
-	res, err := r.db.Exec(ctx, query, isActive, id)
-	if err != nil {
-		return fmt.Errorf("failed to update user status: %w", err)
+func (r *UserRepository) SetUserIsActive(ctx context.Context, id string, isActive bool) (*models.User, error) {
+	query := `
+        UPDATE users
+        SET is_active = $2
+        WHERE id = $1
+        RETURNING id, name, team_name, is_active
+    `
+	var u models.User
+	if err := r.db.QueryRow(ctx, query, id, isActive).Scan(&u.ID, &u.Name, &u.TeamName, &u.IsActive); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, models.ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to update user: %w", err)
 	}
-	if res.RowsAffected() == 0 {
-		return models.ErrNotFound
-	}
-	return nil
+
+	return &u, nil
 }
 
 func (r *UserRepository) GetActiveUsersByTeam(ctx context.Context, teamName string) ([]models.User, error) {
