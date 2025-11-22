@@ -60,9 +60,10 @@ func (r *PullRequestRepository) CreatePR(ctx context.Context, pr *models.PullReq
 func (r *PullRequestRepository) MergePR(ctx context.Context, id string) (*models.PullRequest, error) {
 	query := `
         UPDATE pull_requests 
-        SET status = 'MERGED', merged_at = $2
+        SET status = 'MERGED', 
+            merged_at = COALESCE(merged_at, $2)
         WHERE id = $1
-        RETURNING id, name, author_id, status, created_at, merged_at, reviewers
+        RETURNING id, name, author_id, status, created_at, merged_at
     `
 
 	var pr models.PullRequest
@@ -74,7 +75,6 @@ func (r *PullRequestRepository) MergePR(ctx context.Context, id string) (*models
 		&pr.Status,
 		&pr.CreatedAt,
 		&pr.MergedAt,
-		&pr.Reviewers,
 	)
 
 	if err != nil {
@@ -83,6 +83,23 @@ func (r *PullRequestRepository) MergePR(ctx context.Context, id string) (*models
 		}
 		return nil, fmt.Errorf("failed to merge pr: %w", err)
 	}
+
+	reviewersQuery := `
+		SELECT reviewer_id 
+		FROM pr_reviewers 
+		WHERE pr_id = $1
+	`
+	rows, err := r.db.Query(ctx, reviewersQuery, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get reviewers: %w", err)
+	}
+	defer rows.Close()
+
+	reviewers, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return nil, fmt.Errorf("failed to collect reviewers: %w", err)
+	}
+	pr.Reviewers = reviewers
 
 	return &pr, nil
 }

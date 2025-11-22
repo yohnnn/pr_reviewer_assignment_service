@@ -103,36 +103,33 @@ func (s *PullRequestService) MergePullRequest(ctx context.Context, id string) (*
 	return pr, nil
 }
 
-func (s *PullRequestService) ReassignReviewer(ctx context.Context, prID, oldUserID string) (string, *models.PullRequest, error) {
+func (s *PullRequestService) ReassignReviewer(ctx context.Context, prID, oldUserID string) (*models.PullRequest, string, error) {
 	s.log.InfoContext(ctx, "reassigning reviewer", "pr_id", prID, "old_reviewer", oldUserID)
 
 	pr, err := s.prRepo.GetByID(ctx, prID)
 	if err != nil {
-		if errors.Is(err, models.ErrNotFound) {
-			s.log.WarnContext(ctx, "pr not found", "pr_id", prID)
-		} else {
-			s.log.ErrorContext(ctx, "failed to get pr", "err", err)
-		}
-		return "", nil, err
+		return nil, "", err
+	}
+
+	if pr.Status == "MERGED" {
+		s.log.WarnContext(ctx, "cannot reassign on merged pr", "pr_id", prID)
+		return nil, "", models.ErrPRMerged
 	}
 
 	isReviewer := slices.Contains(pr.Reviewers, oldUserID)
-
 	if !isReviewer {
 		s.log.WarnContext(ctx, "user is not a reviewer", "pr_id", prID, "user_id", oldUserID)
-		return "", nil, models.ErrNotFound
+		return nil, "", models.ErrNotAssigned
 	}
 
 	author, err := s.userRepo.GetUser(ctx, pr.AuthorID)
 	if err != nil {
-		s.log.ErrorContext(ctx, "failed to get author", "err", err)
-		return "", nil, err
+		return nil, "", err
 	}
 
 	activeUsers, err := s.userRepo.GetActiveUsersByTeam(ctx, author.TeamName)
 	if err != nil {
-		s.log.ErrorContext(ctx, "failed to get active users", "err", err)
-		return "", nil, err
+		return nil, "", err
 	}
 
 	currentReviewersMap := make(map[string]bool)
@@ -155,16 +152,14 @@ func (s *PullRequestService) ReassignReviewer(ctx context.Context, prID, oldUser
 	}
 
 	if len(candidates) == 0 {
-		errNoCandidates := errors.New("no other candidates available")
 		s.log.WarnContext(ctx, "no candidates for reassign", "pr_id", prID)
-		return "", nil, errNoCandidates
+		return nil, "", models.ErrNoCandidates
 	}
 
 	newReviewerID := candidates[rand.Intn(len(candidates))]
 
 	if err := s.prRepo.ReassignReviewer(ctx, prID, oldUserID, newReviewerID); err != nil {
-		s.log.ErrorContext(ctx, "failed to reassign in db", "err", err)
-		return "", nil, err
+		return nil, "", err
 	}
 
 	for i, r := range pr.Reviewers {
@@ -174,7 +169,7 @@ func (s *PullRequestService) ReassignReviewer(ctx context.Context, prID, oldUser
 		}
 	}
 
-	return newReviewerID, pr, nil
+	return pr, newReviewerID, nil
 }
 
 func (s *PullRequestService) GetReviewerPRs(ctx context.Context, userID string) ([]*models.PullRequestShort, error) {
