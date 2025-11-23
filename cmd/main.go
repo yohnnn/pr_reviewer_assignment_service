@@ -52,16 +52,19 @@ func main() {
 	userRepo := postgresRepo.NewUserRepository(dbPool)
 	teamRepo := postgresRepo.NewTeamRepository(dbPool)
 	prRepo := postgresRepo.NewPullRequestRepository(dbPool)
+	statsRepo := postgresRepo.NewStatsRepository(dbPool)
 
 	userService := services.NewUserService(userRepo, log)
 	teamService := services.NewTeamService(teamRepo, log)
 	prService := services.NewPullRequestService(prRepo, userRepo, log)
+	statsService := services.NewStatsService(statsRepo, log)
 
 	userHandler := handlers.NewUserHandler(userService, prService, log)
 	teamHandler := handlers.NewTeamHandler(teamService, log)
 	prHandler := handlers.NewPullRequestHandler(prService, log)
+	statsHandler := handlers.NewStatsHandler(statsService, log)
 
-	r := router.NewRouter(userHandler, teamHandler, prHandler)
+	r := router.NewRouter(userHandler, teamHandler, prHandler, statsHandler)
 	ginEngine := r.InitRoutes()
 
 	srv := &http.Server{

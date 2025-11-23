@@ -14,6 +14,7 @@ const (
 	ErrCodePRMerged      = "PR_MERGED"
 	ErrCodeNotAssigned   = "NOT_ASSIGNED"
 	ErrCodeNoCandidate   = "NO_CANDIDATE"
+	ErrCodeStatsError    = "STATS_ERROR"
 )
 
 type ErrorResponse struct {

@@ -6,26 +6,28 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/yohnnn/pr_reviewer_assignment_service/internal/app/handlers/requests"
 	"github.com/yohnnn/pr_reviewer_assignment_service/internal/models"
 	"github.com/yohnnn/pr_reviewer_assignment_service/internal/services"
 )
 
 type TeamHandler struct {
-	TeamService *services.TeamService
+	teamService services.TeamServiceInterface
 	log         *slog.Logger
 }
 
 func NewTeamHandler(
-	TeamService *services.TeamService,
+	teamService services.TeamServiceInterface,
 	log *slog.Logger,
 ) *TeamHandler {
 	return &TeamHandler{
-		TeamService: TeamService,
+		teamService: teamService,
 		log:         log,
 	}
 }
 
+// GET /team/get
 func (h *TeamHandler) GetTeam(c *gin.Context) {
 	teamName := c.Query("team_name")
 	ctx := c.Request.Context()
@@ -36,7 +38,7 @@ func (h *TeamHandler) GetTeam(c *gin.Context) {
 		return
 	}
 
-	team, err := h.TeamService.GetTeam(ctx, teamName)
+	team, err := h.teamService.GetTeam(ctx, teamName)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
 			writeErrorResponse(c, http.StatusNotFound, ErrCodeNotFound, "Team not found")
@@ -49,6 +51,7 @@ func (h *TeamHandler) GetTeam(c *gin.Context) {
 	c.JSON(http.StatusOK, team)
 }
 
+// POST /team/get
 func (h *TeamHandler) AddTeam(c *gin.Context) {
 	var req requests.CreateTeamReq
 	ctx := c.Request.Context()
@@ -72,7 +75,7 @@ func (h *TeamHandler) AddTeam(c *gin.Context) {
 		Name:    req.Name,
 		Members: members,
 	}
-	createdTeam, err := h.TeamService.CreateTeam(ctx, team)
+	createdTeam, err := h.teamService.CreateTeam(ctx, team)
 	if err != nil {
 		if errors.Is(err, models.ErrAlreadyExists) {
 			writeErrorResponse(c, http.StatusBadRequest, ErrCodeTeamExists, "team_name already exists")

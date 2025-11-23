@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/yohnnn/pr_reviewer_assignment_service/internal/models"
 )
 
@@ -24,7 +25,9 @@ func (r *PullRequestRepository) CreatePR(ctx context.Context, pr *models.PullReq
 	if err != nil {
 		return fmt.Errorf("failed to begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 
 	queryPR := `
         INSERT INTO pull_requests (id, name, author_id, status, created_at, merged_at)

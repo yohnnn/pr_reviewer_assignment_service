@@ -1,32 +1,38 @@
 package router
 
 import (
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/yohnnn/pr_reviewer_assignment_service/internal/app/handlers"
 )
 
 type Router struct {
-	userHandler *handlers.UserHandler
-	teamHandler *handlers.TeamHandler
-	prHandler   *handlers.PullRequestHandler
+	userHandler  *handlers.UserHandler
+	teamHandler  *handlers.TeamHandler
+	prHandler    *handlers.PullRequestHandler
+	statsHandler *handlers.StatsHandler
 }
 
 func NewRouter(
 	userHandler *handlers.UserHandler,
 	teamHandler *handlers.TeamHandler,
 	prHandler *handlers.PullRequestHandler,
+	statsHandler *handlers.StatsHandler,
 ) *Router {
 	return &Router{
-		userHandler: userHandler,
-		teamHandler: teamHandler,
-		prHandler:   prHandler,
+		userHandler:  userHandler,
+		teamHandler:  teamHandler,
+		prHandler:    prHandler,
+		statsHandler: statsHandler,
 	}
 }
 
 func (r *Router) InitRoutes() *gin.Engine {
 
 	router := gin.Default()
+
+	router.Use(cors.Default())
 
 	api := router.Group("/")
 	{
@@ -35,6 +41,8 @@ func (r *Router) InitRoutes() *gin.Engine {
 			users.POST("/setIsActive", r.userHandler.SetActive)
 
 			users.GET("/getReview", r.userHandler.GetReview)
+
+			users.POST("/deactivate", r.userHandler.DeactivateUsers)
 		}
 
 		teams := api.Group("/team")
@@ -52,6 +60,8 @@ func (r *Router) InitRoutes() *gin.Engine {
 
 			prs.POST("/merge", r.prHandler.MergePullRequest)
 		}
+
+		router.GET("/stats", r.statsHandler.GetStats)
 	}
 
 	return router

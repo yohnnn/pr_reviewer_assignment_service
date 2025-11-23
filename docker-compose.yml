@@ -47,5 +47,15 @@ services:
       db:
         condition: service_healthy
 
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    container_name: pr_service_swagger
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./api/openapi.yaml:/openapi.yaml
+    environment:
+      SWAGGER_JSON: /openapi.yaml
+
 volumes:
   postgres_data:

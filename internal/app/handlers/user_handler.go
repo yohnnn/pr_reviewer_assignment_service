@@ -6,20 +6,21 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/yohnnn/pr_reviewer_assignment_service/internal/app/handlers/requests"
 	"github.com/yohnnn/pr_reviewer_assignment_service/internal/models"
 	"github.com/yohnnn/pr_reviewer_assignment_service/internal/services"
 )
 
 type UserHandler struct {
-	userService *services.UserService
-	prService   *services.PullRequestService
+	userService services.UserServiceInterface
+	prService   services.PullRequestServiceInterface
 	log         *slog.Logger
 }
 
 func NewUserHandler(
-	userService *services.UserService,
-	prService *services.PullRequestService,
+	userService services.UserServiceInterface,
+	prService services.PullRequestServiceInterface,
 	log *slog.Logger,
 ) *UserHandler {
 	return &UserHandler{
@@ -29,6 +30,7 @@ func NewUserHandler(
 	}
 }
 
+// POST /users/setIsActive
 func (h *UserHandler) SetActive(c *gin.Context) {
 	var req requests.SetActiveReq
 	ctx := c.Request.Context()
@@ -50,6 +52,7 @@ func (h *UserHandler) SetActive(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"user": user})
 }
 
+// GET /users/getReview
 func (h *UserHandler) GetReview(c *gin.Context) {
 	userID := c.Query("user_id")
 	ctx := c.Request.Context()
@@ -74,4 +77,20 @@ func (h *UserHandler) GetReview(c *gin.Context) {
 		"user_id":       userID,
 		"pull_requests": prShort,
 	})
+}
+
+// POST /users/deactivate
+func (h *UserHandler) DeactivateUsers(c *gin.Context) {
+	var req requests.DeactivateRequest
+	ctx := c.Request.Context()
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.log.WarnContext(ctx, "failed to deactivate users", "err", err)
+		writeErrorResponse(c, http.StatusBadRequest, ErrCodeInvalidFormat, "Invalid request payload")
+		return
+	}
+	if err := h.userService.DeactivateUsers(ctx, req.UserIDs); err != nil {
+		writeErrorResponse(c, http.StatusInternalServerError, ErrCodeInternal, "Internal server error")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "Users deactivated"})
 }

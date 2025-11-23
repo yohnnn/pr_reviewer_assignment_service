@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/yohnnn/pr_reviewer_assignment_service/internal/models"
 )
 
@@ -24,7 +25,9 @@ func (r *TeamRepository) CreateTeam(ctx context.Context, team *models.Team) erro
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 
 	queryTeam := `INSERT INTO teams (name) VALUES ($1)`
 	if _, err = tx.Exec(ctx, queryTeam, team.Name); err != nil {

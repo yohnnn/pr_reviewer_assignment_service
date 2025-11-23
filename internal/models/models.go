@@ -36,3 +36,16 @@ type PullRequestShort struct {
 	AuthorID string `json:"author_id"`
 	Status   string `json:"status"`
 }
+
+type ReviewerStat struct {
+	UserID      string `json:"user_id"`
+	Username    string `json:"username"`
+	ReviewCount int    `json:"review_count"`
+}
+
+type ReviewToUpdate struct {
+	PRID          string
+	OldReviewerID string
+	AuthorID      string
+	TeamName      string
+}

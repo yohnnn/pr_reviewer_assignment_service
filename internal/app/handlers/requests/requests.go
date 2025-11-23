@@ -30,3 +30,7 @@ type ReassignPRReq struct {
 	ID        string `json:"pull_request_id" binding:"required"`
 	OldUserID string `json:"old_user_id"     binding:"required"`
 }
+
+type DeactivateRequest struct {
+	UserIDs []string `json:"user_ids" binding:"required,min=1"`
+}

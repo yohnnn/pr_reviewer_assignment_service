@@ -15,6 +15,7 @@ type UserRepositoryInterface interface {
 	GetUser(ctx context.Context, id string) (*models.User, error)
 	SetUserIsActive(ctx context.Context, id string, isActive bool) (*models.User, error)
 	GetActiveUsersByTeam(ctx context.Context, teamName string) ([]models.User, error)
+	DeactivateUsers(ctx context.Context, userIDs []string) error
 }
 
 type PullRequestRepositoryInterface interface {
@@ -23,4 +24,8 @@ type PullRequestRepositoryInterface interface {
 	ReassignReviewer(ctx context.Context, id, oldUserID, newUserID string) error
 	GetByReviewerID(ctx context.Context, userID string) ([]*models.PullRequestShort, error)
 	GetByID(ctx context.Context, id string) (*models.PullRequest, error)
+}
+
+type StatsRepositoryInterface interface {
+	GetTopReviewers(ctx context.Context) ([]*models.ReviewerStat, error)
 }

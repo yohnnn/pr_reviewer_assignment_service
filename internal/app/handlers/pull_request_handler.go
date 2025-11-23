@@ -6,26 +6,28 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/yohnnn/pr_reviewer_assignment_service/internal/app/handlers/requests"
 	"github.com/yohnnn/pr_reviewer_assignment_service/internal/models"
 	"github.com/yohnnn/pr_reviewer_assignment_service/internal/services"
 )
 
 type PullRequestHandler struct {
-	PullRequestService *services.PullRequestService
+	pullRequestService services.PullRequestServiceInterface
 	log                *slog.Logger
 }
 
 func NewPullRequestHandler(
-	PullRequestService *services.PullRequestService,
+	pullRequestService services.PullRequestServiceInterface,
 	log *slog.Logger,
 ) *PullRequestHandler {
 	return &PullRequestHandler{
-		PullRequestService: PullRequestService,
+		pullRequestService: pullRequestService,
 		log:                log,
 	}
 }
 
+// POST /pullRequest/create
 func (h *PullRequestHandler) CreatePullRequest(c *gin.Context) {
 	var req requests.CreatePRReq
 	ctx := c.Request.Context()
@@ -35,7 +37,7 @@ func (h *PullRequestHandler) CreatePullRequest(c *gin.Context) {
 		return
 	}
 
-	pr, err := h.PullRequestService.CreatePullRequest(ctx, req.ID, req.Name, req.AuthorID)
+	pr, err := h.pullRequestService.CreatePullRequest(ctx, req.ID, req.Name, req.AuthorID)
 	if err != nil {
 		if errors.Is(err, models.ErrAlreadyExists) {
 			writeErrorResponse(c, http.StatusConflict, ErrCodePRExists, "PR id already exists")
@@ -50,6 +52,7 @@ func (h *PullRequestHandler) CreatePullRequest(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"pr": pr})
 }
 
+// POST /pullRequest/merge
 func (h *PullRequestHandler) MergePullRequest(c *gin.Context) {
 	var req requests.MergePRReq
 	ctx := c.Request.Context()
@@ -59,7 +62,7 @@ func (h *PullRequestHandler) MergePullRequest(c *gin.Context) {
 		return
 	}
 
-	pr, err := h.PullRequestService.MergePullRequest(ctx, req.ID)
+	pr, err := h.pullRequestService.MergePullRequest(ctx, req.ID)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
 			writeErrorResponse(c, http.StatusNotFound, ErrCodeNotFound, "PR not found")
@@ -72,6 +75,7 @@ func (h *PullRequestHandler) MergePullRequest(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"pr": pr})
 }
 
+// POST /pullRequest/reassign
 func (h *PullRequestHandler) ReassignPR(c *gin.Context) {
 	var req requests.ReassignPRReq
 	ctx := c.Request.Context()
@@ -82,7 +86,7 @@ func (h *PullRequestHandler) ReassignPR(c *gin.Context) {
 		return
 	}
 
-	pr, newReviewerID, err := h.PullRequestService.ReassignReviewer(ctx, req.ID, req.OldUserID)
+	pr, newReviewerID, err := h.pullRequestService.ReassignReviewer(ctx, req.ID, req.OldUserID)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
 			writeErrorResponse(c, http.StatusNotFound, ErrCodeNotFound, "PR or User not found")

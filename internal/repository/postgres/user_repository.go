@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/yohnnn/pr_reviewer_assignment_service/internal/models"
 )
 
@@ -73,4 +74,80 @@ func (r *UserRepository) GetActiveUsersByTeam(ctx context.Context, teamName stri
 	}
 
 	return users, nil
+}
+
+func (r *UserRepository) DeactivateUsers(ctx context.Context, userIDs []string) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	queryDeactivate := `UPDATE users SET is_active = false WHERE id = ANY($1)`
+	_, err = tx.Exec(ctx, queryDeactivate, userIDs)
+	if err != nil {
+		return fmt.Errorf("failed to deactivate users: %w", err)
+	}
+
+	query := `
+		SELECT prr.pr_id, prr.reviewer_id, pr.author_id, u.team_name
+		FROM pr_reviewers prr
+		JOIN pull_requests pr ON prr.pr_id = pr.id
+		JOIN users u ON pr.author_id = u.id
+		WHERE prr.reviewer_id = ANY($1) 
+		  AND pr.status = 'OPEN'
+	`
+
+	rows, err := tx.Query(ctx, query, userIDs)
+	if err != nil {
+		return fmt.Errorf("failed to select reviews to update: %w", err)
+	}
+
+	reviews, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.ReviewToUpdate, error) {
+		var item models.ReviewToUpdate
+		err := row.Scan(&item.PRID, &item.OldReviewerID, &item.AuthorID, &item.TeamName)
+		return item, err
+	})
+	if err != nil {
+		return fmt.Errorf("failed to collect reviews to update: %w", err)
+	}
+
+	queryDeleteReviewer := "DELETE FROM pr_reviewers WHERE pr_id=$1 AND reviewer_id=$2"
+
+	queryUpdateReviewer := "UPDATE pr_reviewers SET reviewer_id=$1 WHERE pr_id=$2 AND reviewer_id=$3"
+
+	for _, rev := range reviews {
+		var newReviewerID string
+
+		queryCandidate := `
+			SELECT id FROM users
+			WHERE team_name = $1
+			  AND is_active = true
+			  AND id != $2
+			  AND id NOT IN (
+			      SELECT reviewer_id FROM pr_reviewers WHERE pr_id = $3
+			  )
+			LIMIT 1
+		`
+
+		err := tx.QueryRow(ctx, queryCandidate, rev.TeamName, rev.AuthorID, rev.PRID).Scan(&newReviewerID)
+
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				if _, err := tx.Exec(ctx, queryDeleteReviewer, rev.PRID, rev.OldReviewerID); err != nil {
+					return fmt.Errorf("failed to delete reviewer: %w", err)
+				}
+			} else {
+				return fmt.Errorf("failed to find candidate: %w", err)
+			}
+		} else {
+			if _, err := tx.Exec(ctx, queryUpdateReviewer, newReviewerID, rev.PRID, rev.OldReviewerID); err != nil {
+				return fmt.Errorf("failed to update reviewer: %w", err)
+			}
+		}
+	}
+
+	return tx.Commit(ctx)
 }
