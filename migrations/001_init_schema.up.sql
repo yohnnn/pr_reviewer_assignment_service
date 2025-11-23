@@ -23,3 +23,7 @@ CREATE TABLE pr_reviewers (
     reviewer_id TEXT NOT NULL REFERENCES users(id),
     PRIMARY KEY (pr_id, reviewer_id)
 );
+
+CREATE INDEX idx_users_team_active ON users(team_name, is_active);
+CREATE INDEX idx_pull_requests_author ON pull_requests(author_id);
+CREATE INDEX idx_pr_reviewers_reviewer ON pr_reviewers(reviewer_id);
